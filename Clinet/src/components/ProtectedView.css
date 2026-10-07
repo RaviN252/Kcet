@@ -1,0 +1,32 @@
+.protected-root {
+  position: relative;
+}
+
+.protected-content-hidden {
+  filter: blur(20px);
+  user-select: none;
+  pointer-events: none;
+}
+
+.protected-block {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(248, 248, 251, 0.7);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+
+.protected-block-text {
+  margin: 0;
+  padding: 16px 28px;
+  background: var(--surface);
+  color: var(--text-h);
+  font-weight: 700;
+  font-size: 1.05rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}

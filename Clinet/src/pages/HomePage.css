@@ -1,0 +1,124 @@
+.hero-section {
+  background: linear-gradient(180deg, var(--brand-light) 0%, var(--bg) 100%);
+  padding: 72px 24px 56px;
+}
+
+.hero-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.hero-sub {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  max-width: 560px;
+}
+
+.hero-cta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.feature-card {
+  text-align: left;
+}
+
+.feature-icon {
+  font-size: 1.8rem;
+  margin-bottom: 6px;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.step-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.step-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: #d8d5f5;
+  transform: translateY(-2px);
+}
+
+.step-number {
+  font-family: var(--heading);
+  font-weight: 800;
+  font-size: 1.4rem;
+  color: var(--brand);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.testimonial-card {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.testimonial-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--heading);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.testimonial-quote {
+  color: var(--text);
+  font-style: italic;
+  margin: 0;
+}
+
+.testimonial-name {
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.cta-band {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
+  color: #fff;
+  border-radius: var(--radius-lg);
+  padding: 32px 36px;
+  box-shadow: var(--shadow-glow);
+}
+.cta-band h2 { color: #fff; margin-bottom: 4px; }
+.cta-band p { color: rgba(255, 255, 255, 0.85); margin: 0; }
+.cta-band .btn {
+  background: #fff;
+  color: var(--brand);
+  flex-shrink: 0;
+}
+.cta-band .btn:hover { background: #f4f4ff; }
+
+@media (max-width: 640px) {
+  .hero-section { padding: 48px 20px 40px; }
+  .cta-band { flex-direction: column; text-align: center; }
+}

@@ -1,0 +1,37 @@
+.viewer-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.viewer-note {
+  font-size: 0.85rem;
+  background: var(--brand-light);
+  color: var(--brand);
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  margin-top: 4px;
+}
+
+.viewer-pages {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.viewer-pages img {
+  max-width: 100%;
+  display: block;
+  margin: 0 auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  user-select: none;
+  pointer-events: none;
+}
+
+@media print {
+  .viewer {
+    display: none !important;
+  }
+}
