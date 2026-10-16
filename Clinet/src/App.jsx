@@ -17,6 +17,7 @@ import AdminSubjectContentPage from './pages/admin/AdminSubjectContentPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminManualPaymentPage from './pages/admin/AdminManualPaymentPage';
+import AdminLiveClassesPage from './pages/admin/AdminLiveClassesPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import FaqPage from './pages/FaqPage';
 import './App.css';
@@ -50,6 +51,7 @@ function App() {
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
             <Route path="/admin/manual-payment" element={<AdminManualPaymentPage />} />
+            <Route path="/admin/live-classes" element={<AdminLiveClassesPage />} />
           </Route>
         </Routes>
       </main>

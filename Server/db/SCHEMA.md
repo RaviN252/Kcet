@@ -14,6 +14,7 @@ folders ──< papers (optional — NULL folder_id = directly under subject)
 users ──< payments >── subjects
 users ──< purchases >── subjects
 payments ──< purchases
+subjects ──< live_classes
 ```
 
 - **Subjects are the sellable unit.** A student buys a subject once and unlocks every paper
@@ -192,3 +193,33 @@ Unique constraint: `(user_id, subject_id)` — a user can only unlock a given su
 
 Used by: `routes/purchases.js`, `routes/viewer.js` (access check), `routes/admin/payments.js`,
 `routes/admin/subjects.js` (deletion guard).
+
+---
+
+## live_classes
+
+Live classes, streamed and recorded entirely on YouTube — no video is stored on this server. The
+admin goes live on the channel as **Unlisted**, pastes the link into the admin panel and starts the
+class; students who own the subject (or any logged-in user, for a free subject) watch it embedded
+on the subject page. "End class" flips the row to `completed`: YouTube keeps the stream's recording
+under the same video id, so it shows up under "Recorded classes" with no extra step.
+
+| Column | Type | Null | Key | Default | Notes |
+|---|---|---|---|---|---|
+| id | INT AUTO_INCREMENT | NO | PK | — | |
+| subject_id | INT | NO | FK → subjects.id (CASCADE), INDEX | — | the YouTube video itself is untouched if the subject is deleted |
+| title | VARCHAR(255) | NO | | — | e.g. "Maths – Integration, part 2" |
+| youtube_video_id | VARCHAR(20) | NO | | — | 11-char id parsed from whatever link was pasted; only ever sent to users with access |
+| youtube_managed | TINYINT(1) | NO | | 0 | 1 = broadcast was created by the server through the YouTube API (automatic mode), so "End class" also ends it on YouTube; 0 = link pasted by the admin |
+| status | ENUM('live','completed') | NO | INDEX | 'live' | at most one 'live' row per subject |
+| started_at | TIMESTAMP | YES | | CURRENT_TIMESTAMP | |
+| ended_at | TIMESTAMP | YES | | NULL | set by "End class" |
+| created_at | TIMESTAMP | YES | | CURRENT_TIMESTAMP | |
+| updated_at | TIMESTAMP | YES | | CURRENT_TIMESTAMP | auto-updates on row change |
+
+Automatic mode (optional, `services/youtube.js`): when `YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` /
+`YOUTUBE_REFRESH_TOKEN` are set, "Start class" without a link creates the unlisted broadcast itself,
+bound to one reusable stream whose fixed key goes into OBS once.
+
+Used by: `routes/classes.js` (student view, access-checked), `routes/admin/classes.js`,
+`routes/purchases.js` (live/recording counts on My Purchases).

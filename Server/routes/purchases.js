@@ -7,7 +7,9 @@ router.use(requireAuth);
 
 router.get('/', async (req, res) => {
   const [subjects] = await pool.query(
-    `SELECT s.id, s.name, pu.purchased_at AS purchasedAt
+    `SELECT s.id, s.name, pu.purchased_at AS purchasedAt,
+       EXISTS(SELECT 1 FROM live_classes lc WHERE lc.subject_id = s.id AND lc.status = 'live') AS liveNow,
+       (SELECT COUNT(*) FROM live_classes lc WHERE lc.subject_id = s.id AND lc.status = 'completed') AS recordingCount
      FROM purchases pu
      JOIN subjects s ON s.id = pu.subject_id
      WHERE pu.user_id = ?

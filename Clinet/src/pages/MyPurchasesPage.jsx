@@ -18,7 +18,7 @@ export default function MyPurchasesPage() {
     <div className="page">
       <div className="container">
         <h1>My Purchases</h1>
-        <p className="muted">Subjects you've unlocked, and the papers you can read anytime.</p>
+        <p className="muted">Subjects you've unlocked — papers, live classes and recorded classes.</p>
 
         {loading ? (
           <p className="muted section-gap">Loading...</p>
@@ -34,15 +34,21 @@ export default function MyPurchasesPage() {
             {purchases.map((s) => (
               <Link to={`/papers/${s.id}`} className="paper-card" key={s.id}>
                 <div className="tags">
+                  {Boolean(s.liveNow) && <span className="badge badge-live">● Live now</span>}
                   <span className="badge">
                     {s.papers.length} paper{s.papers.length === 1 ? '' : 's'}
                   </span>
+                  {s.recordingCount > 0 && (
+                    <span className="badge">
+                      {s.recordingCount} recorded class{s.recordingCount === 1 ? '' : 'es'}
+                    </span>
+                  )}
                 </div>
                 <h3>{s.name}</h3>
                 <div className="flex-between" style={{ marginTop: 8 }}>
                   <span className="badge badge-success">Purchased</span>
                   <span className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-                    View papers
+                    {s.liveNow ? 'Join live class' : 'Open'}
                   </span>
                 </div>
               </Link>

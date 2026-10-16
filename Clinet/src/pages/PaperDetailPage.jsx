@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { buildFolderTree, findNodeById, getFolderPath } from '../utils/folderTree';
+import SubjectClasses from '../components/SubjectClasses';
 
 function FolderRow({ subjectId, node }) {
   return (
@@ -160,6 +161,8 @@ export default function PaperDetailPage() {
 
           {error && <p role="alert" style={{ marginBottom: 16 }}>{error}</p>}
           {message && <p className="alert-success" style={{ marginBottom: 16 }}>{message}</p>}
+
+          {canViewDirectly && !folderId && <SubjectClasses subjectId={id} />}
 
           {canViewDirectly ? (
             papers.length === 0 && folders.length === 0 ? (

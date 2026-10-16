@@ -5,6 +5,7 @@ import './Admin.css';
 
 const adminLinks = [
   { to: '/admin/subjects', label: 'Manage Subjects' },
+  { to: '/admin/live-classes', label: 'Live Classes' },
   { to: '/admin/users', label: 'Users' },
   { to: '/admin/manual-payment', label: 'Mark Payment' },
 ];

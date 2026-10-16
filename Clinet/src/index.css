@@ -329,6 +329,7 @@ label {
 
 .badge-accent { background: #fffbeb; color: var(--accent-dark); }
 .badge-success { background: var(--success-bg); color: var(--success); }
+.badge-live { background: var(--danger-bg); color: var(--danger); }
 
 .price-tag {
   font-family: var(--heading);

@@ -15,6 +15,8 @@ const adminPaperRoutes = require('./routes/admin/papers');
 const adminUserRoutes = require('./routes/admin/users');
 const adminDashboardRoutes = require('./routes/admin/dashboard');
 const adminPaymentRoutes = require('./routes/admin/payments');
+const classRoutes = require('./routes/classes');
+const adminClassRoutes = require('./routes/admin/classes');
 const { checkPendingUpiReminders } = require('./services/paymentReminders');
 
 const app = express();
@@ -32,6 +34,8 @@ app.use('/api/admin/papers', adminPaperRoutes);
 app.use('/api/admin/users', adminUserRoutes);
 app.use('/api/admin/dashboard', adminDashboardRoutes);
 app.use('/api/admin/payments', adminPaymentRoutes);
+app.use('/api/classes', classRoutes);
+app.use('/api/admin/classes', adminClassRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {
