@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const pool = require('../../config/db');
 const { requireAuth, requireAdmin } = require('../../middleware/auth');
+const { sendCsv } = require('../../utils/csv');
 
 const router = express.Router();
 router.use(requireAuth, requireAdmin);
@@ -47,19 +48,50 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Shared by the paginated list and the CSV export, so the export always matches
+// exactly what the admin filtered on screen.
+// q: matches name/email/phone. subjectId: comma-separated subject ids = students
+// who own ANY of them; 'none' = students who own nothing.
+function buildUserFilter(query) {
+  const q = (query.q || '').trim();
+  const subjectId = (query.subjectId || '').trim();
+  const subjectIds = subjectId
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => /^\d+$/.test(s))
+    .map(Number);
+
+  const conditions = [];
+  const whereParams = [];
+  if (q) {
+    conditions.push('(u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)');
+    const likeQ = `%${q}%`;
+    whereParams.push(likeQ, likeQ, likeQ);
+  }
+  if (subjectId === 'none') {
+    conditions.push('NOT EXISTS (SELECT 1 FROM purchases pu WHERE pu.user_id = u.id)');
+  } else if (subjectIds.length > 0) {
+    conditions.push('EXISTS (SELECT 1 FROM purchases pu WHERE pu.user_id = u.id AND pu.subject_id IN (?))');
+    whereParams.push(subjectIds);
+  }
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  return { whereClause, whereParams };
+}
+
+const USER_COLUMNS = `
+  u.id, u.name, u.phone, u.email, u.user_id AS userId, u.role, u.created_at,
+  (SELECT COUNT(*) FROM purchases pu WHERE pu.user_id = u.id) AS subjectsPurchased,
+  (SELECT GROUP_CONCAT(s.name ORDER BY s.name SEPARATOR ', ')
+    FROM purchases pu JOIN subjects s ON s.id = pu.subject_id
+    WHERE pu.user_id = u.id) AS subjectNames,
+  (SELECT COALESCE(SUM(p.amount), 0) FROM payments p
+    WHERE p.user_id = u.id AND p.status = 'success') AS totalPaid`;
+
 router.get('/', async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(2000, Math.max(1, parseInt(req.query.limit, 10) || 50));
   const offset = (page - 1) * limit;
-  const q = (req.query.q || '').trim();
-
-  let whereClause = '';
-  const whereParams = [];
-  if (q) {
-    whereClause = 'WHERE u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?';
-    const likeQ = `%${q}%`;
-    whereParams.push(likeQ, likeQ, likeQ);
-  }
+  const { whereClause, whereParams } = buildUserFilter(req.query);
 
   const [[{ total }]] = await pool.query(
     `SELECT COUNT(*) AS total FROM users u ${whereClause}`,
@@ -67,14 +99,7 @@ router.get('/', async (req, res) => {
   );
 
   const [rows] = await pool.query(
-    `SELECT
-      u.id, u.name, u.phone, u.email, u.user_id AS userId, u.role, u.created_at,
-      (SELECT COUNT(*) FROM purchases pu WHERE pu.user_id = u.id) AS subjectsPurchased,
-      (SELECT GROUP_CONCAT(s.name ORDER BY s.name SEPARATOR ', ')
-        FROM purchases pu JOIN subjects s ON s.id = pu.subject_id
-        WHERE pu.user_id = u.id) AS subjectNames,
-      (SELECT COALESCE(SUM(p.amount), 0) FROM payments p
-        WHERE p.user_id = u.id AND p.status = 'success') AS totalPaid
+    `SELECT ${USER_COLUMNS}
     FROM users u
     ${whereClause}
     ORDER BY u.created_at DESC
@@ -83,6 +108,29 @@ router.get('/', async (req, res) => {
   );
 
   res.json({ users: rows, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) });
+});
+
+// Every user matching the current search + subject filter (all pages), as CSV.
+router.get('/export', async (req, res) => {
+  try {
+    const { whereClause, whereParams } = buildUserFilter(req.query);
+    const [rows] = await pool.query(
+      `SELECT ${USER_COLUMNS},
+        DATE_FORMAT(CONVERT_TZ(u.created_at, @@session.time_zone, '+05:30'), '%d-%m-%Y') AS registeredOn
+      FROM users u
+      ${whereClause}
+      ORDER BY u.created_at DESC`,
+      whereParams
+    );
+
+    const header = ['S.No', 'Name', 'Email', 'Phone', 'Role', 'Subjects purchased', 'No. of subjects', 'Total paid (₹)', 'Registered on'];
+    const lines = rows.map((r, i) => [
+      i + 1, r.name, r.email, r.phone, r.role, r.subjectNames || '', r.subjectsPurchased, r.totalPaid, r.registeredOn,
+    ]);
+    sendCsv(res, 'users', header, lines);
+  } catch (err) {
+    res.status(500).json({ message: 'Could not export users', error: err.message });
+  }
 });
 
 router.put('/:id', async (req, res) => {

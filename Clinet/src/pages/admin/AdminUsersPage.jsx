@@ -1,10 +1,39 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import api from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { downloadCsv } from '../../utils/downloadCsv';
+import SubjectFilter from './SubjectFilter';
 import './Admin.css';
 
 const emptyForm = { name: '', phone: '', email: '', password: '' };
 const PAGE_SIZE = 50;
+const VISIBLE_SUBJECTS = 2;
+
+// Purchased subjects as compact chips — long lists collapse behind a "+N more" toggle
+// so one heavy buyer doesn't stretch their row to the height of the screen.
+function SubjectChips({ names }) {
+  const [expanded, setExpanded] = useState(false);
+  const subjects = names ? names.split(', ') : [];
+  if (subjects.length === 0) return <span className="muted">None</span>;
+
+  const shown = expanded ? subjects : subjects.slice(0, VISIBLE_SUBJECTS);
+  const hiddenCount = subjects.length - shown.length;
+
+  return (
+    <div className="subject-chips">
+      {shown.map((name) => (
+        <span key={name} className="subject-chip" title={name}>
+          {name}
+        </span>
+      ))}
+      {subjects.length > VISIBLE_SUBJECTS && (
+        <button type="button" className="subject-chip-toggle" onClick={() => setExpanded((v) => !v)}>
+          {expanded ? 'Show less' : `+${hiddenCount} more`}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function AdminUsersPage() {
   const { user: currentUser } = useAuth();
@@ -19,6 +48,13 @@ export default function AdminUsersPage() {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [subjects, setSubjects] = useState([]);
+  const [subjectFilter, setSubjectFilter] = useState([]);
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    api.get('/admin/subjects').then((res) => setSubjects(res.data.subjects));
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -28,9 +64,26 @@ export default function AdminUsersPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const filterParams = useMemo(
+    () => ({ q: debouncedSearch || undefined, subjectId: subjectFilter.join(',') || undefined }),
+    [debouncedSearch, subjectFilter]
+  );
+
+  // Exports every user matching the current search + subject filter — all pages, not just this one.
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await downloadCsv('/admin/users/export', filterParams, 'users.csv');
+    } catch {
+      window.alert('Could not export users');
+    } finally {
+      setExporting(false);
+    }
+  }
+
   function loadUsers() {
     api
-      .get('/admin/users', { params: { page, limit: PAGE_SIZE, q: debouncedSearch } })
+      .get('/admin/users', { params: { page, limit: PAGE_SIZE, ...filterParams } })
       .then((res) => {
         setUsers(res.data.users);
         setTotal(res.data.total);
@@ -38,7 +91,7 @@ export default function AdminUsersPage() {
       });
   }
 
-  useEffect(loadUsers, [page, debouncedSearch]);
+  useEffect(loadUsers, [page, filterParams]);
 
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -183,59 +236,79 @@ export default function AdminUsersPage() {
         </div>
 
         <h2 className="section-gap">All users ({total})</h2>
-        <input
-          type="search"
-          placeholder="Search by name, email, or phone..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search users"
-        />
+        <div className="users-filters">
+          <input
+            type="search"
+            placeholder="Search by name, email, or phone..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search users"
+          />
+          <SubjectFilter
+            subjects={subjects}
+            value={subjectFilter}
+            onChange={(next) => {
+              setSubjectFilter(next);
+              setPage(1);
+            }}
+          />
+          <button
+            type="button"
+            className="btn-export users-export"
+            onClick={handleExport}
+            disabled={exporting || total === 0}
+            title={`Download these ${total} user(s) as CSV`}
+          >
+            {exporting ? 'Exporting...' : `Export CSV (${total})`}
+          </button>
+        </div>
 
         {users.length === 0 ? (
           <div className="card center-text section-gap">
-            <p className="muted" style={{ marginBottom: 0 }}>No users match that search.</p>
+            <p className="muted" style={{ marginBottom: 0 }}>No users match these filters.</p>
           </div>
         ) : (
         <>
         <div className="table-wrap section-gap">
-          <table>
+          <table className="users-table">
             <thead>
               <tr>
-                <th>#</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Role</th>
+                <th className="col-index">#</th>
+                <th>Student</th>
                 <th>Subjects purchased</th>
-                <th>Total paid</th>
-                <th></th>
+                <th className="col-paid">Total paid</th>
+                <th className="col-actions"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>
               {users.map((u, i) => (
                 <tr key={u.id}>
-                  <td>{(page - 1) * PAGE_SIZE + i + 1}</td>
-                  <td>{u.name}</td>
-                  <td>{u.email}</td>
-                  <td>{u.phone}</td>
+                  <td className="col-index muted">{(page - 1) * PAGE_SIZE + i + 1}</td>
                   <td>
-                    <span className={`badge ${u.role === 'admin' ? 'badge-accent' : ''}`}>{u.role}</span>
+                    <div className="user-cell-name">
+                      {u.name}
+                      {u.role === 'admin' && <span className="badge badge-accent">admin</span>}
+                    </div>
+                    <div className="user-cell-meta">{u.email}</div>
+                    <div className="user-cell-meta">{u.phone}</div>
                   </td>
-                  <td>{u.subjectNames || '0'}</td>
-                  <td>
+                  <td data-label="Subjects">
+                    <SubjectChips names={u.subjectNames} />
+                  </td>
+                  <td className="col-paid" data-label="Total paid">
                     {Number(u.totalPaid) > 0 ? (
                       <span className="badge badge-success">₹{u.totalPaid}</span>
                     ) : (
                       <span className="muted">₹0.00</span>
                     )}
                   </td>
-                  <td>
-                    <div className="flex-row" style={{ flexWrap: 'nowrap' }}>
-                      <button type="button" onClick={() => handleEdit(u)}>
+                  <td className="col-actions">
+                    <div className="user-actions">
+                      <button type="button" className="btn-sm" onClick={() => handleEdit(u)}>
                         Edit
                       </button>
                       {u.id !== currentUser?.id && (
-                        <button type="button" className="btn-danger" onClick={() => handleDelete(u)}>
+                        <button type="button" className="btn-sm btn-danger" onClick={() => handleDelete(u)}>
                           Delete
                         </button>
                       )}
