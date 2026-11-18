@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../../config/db');
 const { requireAuth, requireAdmin } = require('../../middleware/auth');
+const { sendCsv } = require('../../utils/csv');
 
 const router = express.Router();
 router.use(requireAuth, requireAdmin);
@@ -14,6 +15,32 @@ router.get('/', async (req, res) => {
     ORDER BY s.name ASC
   `);
   res.json({ subjects: rows });
+});
+
+// Every student who has access to this subject, as a CSV download.
+router.get('/:id/purchasers/export', async (req, res) => {
+  try {
+    const [[subject]] = await pool.query('SELECT id, name FROM subjects WHERE id = ?', [req.params.id]);
+    if (!subject) return res.status(404).json({ message: 'Subject not found' });
+
+    const [rows] = await pool.query(
+      `SELECT u.name, u.email, u.phone,
+              DATE_FORMAT(CONVERT_TZ(pu.purchased_at, @@session.time_zone, '+05:30'), '%d-%m-%Y %h:%i %p') AS purchasedAt,
+              p.amount, p.payment_method AS method, p.gateway_payment_id AS reference
+       FROM purchases pu
+       JOIN users u ON u.id = pu.user_id
+       JOIN payments p ON p.id = pu.payment_id
+       WHERE pu.subject_id = ?
+       ORDER BY pu.purchased_at DESC`,
+      [subject.id]
+    );
+
+    const header = ['S.No', 'Name', 'Email', 'Phone', 'Purchased on (IST)', 'Amount paid (₹)', 'Payment method', 'UTR / Reference'];
+    const lines = rows.map((r, i) => [i + 1, r.name, r.email, r.phone, r.purchasedAt, r.amount, r.method, r.reference]);
+    sendCsv(res, `${subject.name}_purchasers`, header, lines);
+  } catch (err) {
+    res.status(500).json({ message: 'Could not export purchasers', error: err.message });
+  }
 });
 
 router.post('/', async (req, res) => {

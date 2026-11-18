@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/client';
+import { downloadCsv } from '../../utils/downloadCsv';
 import './Admin.css';
 
 const emptyForm = { name: '', price: '' };
@@ -11,6 +12,7 @@ export default function AdminSubjectsPage() {
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [exportingId, setExportingId] = useState(null);
 
   function loadSubjects() {
     api.get('/admin/subjects').then((res) => setSubjects(res.data.subjects));
@@ -60,6 +62,17 @@ export default function AdminSubjectsPage() {
       setError(err.response?.data?.message || 'Save failed');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleExport(s) {
+    setExportingId(s.id);
+    try {
+      await downloadCsv(`/admin/subjects/${s.id}/purchasers/export`, undefined, `${s.name}_purchasers.csv`);
+    } catch {
+      window.alert(`Could not export purchasers for ${s.name}`);
+    } finally {
+      setExportingId(null);
     }
   }
 
@@ -148,6 +161,15 @@ export default function AdminSubjectsPage() {
                       </Link>
                       <button type="button" className="btn-secondary" onClick={() => startEdit(s)}>
                         Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-export"
+                        onClick={() => handleExport(s)}
+                        disabled={exportingId === s.id || Number(s.purchaseCount) === 0}
+                        title={Number(s.purchaseCount) === 0 ? 'No purchases yet' : 'Download purchasers as CSV'}
+                      >
+                        {exportingId === s.id ? 'Exporting...' : 'Export'}
                       </button>
                       <button type="button" className="btn-danger" onClick={() => handleDelete(s)}>
                         Delete
